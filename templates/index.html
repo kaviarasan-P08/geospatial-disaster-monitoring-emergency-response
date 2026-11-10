@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Disaster Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="container">
+    <div class="landing-text">Stay Alert with Real-Time Disaster Alerts</div>
+    <button class="landing-button" onclick="window.location.href='{{ url_for('dashboard') }}'">
+      Go to Dashboard
+    </button>
+  </div>
+</body>
+</html>

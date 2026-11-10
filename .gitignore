@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+venv/
+.venv/
+env/
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Firebase credentials
+firebase-key.json
+disaster-alert-dashboard-*.json
+*-firebase-adminsdk-*.json
+*service-account*.json
+
+# Application data and user information
+tokens.json
+fcm_tokens.json
+users.json
+user_locations.json
+reports.json
+
+# Node modules
+node_modules/
+
+# System files
+.DS_Store
+
+# Logs
+*.log

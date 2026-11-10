@@ -1,0 +1,130 @@
+/* Body & Background */
+body {
+  margin: 0;
+  font-family: 'Segoe UI', sans-serif;
+  background: url('https://images.unsplash.com/photo-1506629082955-511b1c8c2976?auto=format&fit=crop&w=1400&q=80') no-repeat center center fixed;
+  background-size: cover;
+  color: #fff;
+}
+
+/* Glassmorphism container */
+.container {
+  backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.15);
+  max-width: 900px;
+  margin: 50px auto;
+  padding: 30px 40px;
+  border-radius: 25px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+  text-align: center;
+}
+
+/* Headings */
+h1, h2 {
+  text-align: center;
+  font-weight: 700;
+  margin-bottom: 20px;
+}
+
+/* Cards */
+.cards {
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+.card {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 20px;
+  flex: 1;
+  border-radius: 15px;
+  font-size: 1.2rem;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+}
+
+/* Map */
+#map {
+  height: 450px;
+  width: 100%;
+  border-radius: 20px;
+  margin-bottom: 20px;
+}
+
+/* Forms */
+form {
+  display: flex;
+  flex-direction: column;
+  margin-top: 20px;
+}
+input, textarea {
+  padding: 12px;
+  margin-bottom: 12px;
+  border: none;
+  border-radius: 12px;
+  font-size: 1rem;
+  outline: none;
+}
+button {
+  background: linear-gradient(135deg, #28a745, #218838);
+  color: white;
+  padding: 14px;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 1.1rem;
+  transition: all 0.3s;
+}
+button:hover {
+  background: linear-gradient(135deg, #218838, #1e7e34);
+  transform: scale(1.05);
+}
+
+/* Tables (Admin) */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+table, th, td {
+  border: 1px solid rgba(255,255,255,0.5);
+  color: #fff;
+  padding: 8px;
+  text-align: left;
+}
+table th {
+  background: rgba(255,255,255,0.1);
+}
+table td button {
+  background: #dc3545;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+table td button:hover {
+  background: #c82333;
+}
+
+/* Disabled form */
+form.disabled input, form.disabled textarea, form.disabled button {
+  background: rgba(255,255,255,0.05);
+  cursor: not-allowed;
+}
+
+/* Landing page centered text */
+.landing-text {
+  margin-top: 20vh;
+  font-size: 2.2rem;
+  font-weight: 700;
+}
+.landing-button {
+  margin-top: 20px;
+  font-size: 1.2rem;
+  padding: 14px 30px;
+}

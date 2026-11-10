@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Admin Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #1e1e2f;
+      color: #fff;
+    }
+    .container {
+      max-width: 1100px;
+      margin: 20px auto;
+      padding: 20px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 20px;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+    h1 {
+      text-align: center;
+      font-size: 2rem;
+      font-weight: 900;
+      margin-bottom: 10px;
+    }
+    .description {
+      text-align: center;
+      font-size: 1rem;
+      color: #ccc;
+      margin-bottom: 25px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    th, td {
+      border: 1px solid rgba(255,255,255,0.3);
+      padding: 12px;
+      text-align: left;
+    }
+    th {
+      background: rgba(255,255,255,0.1);
+      font-weight: bold;
+    }
+    td {
+      background: rgba(255,255,255,0.05);
+    }
+    button {
+      background: #dc3545; /* Red */
+      border: none;
+      color: white;
+      padding: 6px 10px;
+      cursor: pointer;
+      border-radius: 5px;
+      font-weight: bold;
+    }
+    button:hover {
+      background: #c82333;
+    }
+    a.logout-link {
+      color: #ff5555;
+      text-decoration: underline;
+      float: right;
+    }
+    .emergency {
+      text-align: center;
+      margin-top: 20px;
+      font-weight: bold;
+      color: #ff5555;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Admin Dashboard</h1>
+    <p class="description">Manage users and monitor disaster reports in real-time. Stay alert and ensure timely responses.</p>
+    <a href="{{ url_for('admin_logout') }}" class="logout-link">Logout</a>
+
+    <h2>Pending Reports (Require Approval)</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Reported By</th>
+          <th>Timestamp</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in pending %}
+          <tr>
+            <td>{{ r.type }}</td>
+            <td>{{ r.description }}</td>
+            <td>{{ r.username }}</td>
+            <td>{{ r.timestamp }}</td>
+            <td>
+              <button onclick="approve({{ r.id }})">Approve</button>
+              <button style="background:#007bff;margin-left:6px;" onclick="decline({{ r.id }})">Decline</button>
+            </td>
+          </tr>
+        {% else %}
+          <tr><td colspan="5" style="text-align:center;">No pending reports.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <h2>All Reports (Approved / Declined)</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Reported By</th>
+          <th>Timestamp</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in reports %}
+          <tr>
+            <td>{{ r.type }}</td>
+            <td>{{ r.description }}</td>
+            <td>{{ r.username }}</td>
+            <td>{{ r.timestamp }}</td>
+            <td>{{ r.status }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="5" style="text-align:center;">No reports.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <h2>Users and Star Ratings</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Username</th>
+          <th>Stars</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for user, data in users.items() %}
+          <tr>
+            <td>
+              {{ user }} {% if (data.report_count is defined and data.report_count < 2) or (data.report_count is not defined) %}<span style="color:#ffd700;font-weight:bold;">(New user)</span>{% endif %}
+              <div style="margin-top:6px;">
+                <button style="background:#6c757d;padding:4px 8px;" onclick="decrementStar('{{ user }}', this)">Reduce Star</button>
+              </div>
+            </td>
+            <td class="star-count" data-username="{{ user }}">{{ data.stars }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <!-- Admin notice area -->
+    <div id="admin-notice" style="display:none;margin-top:16px;padding:10px;border-radius:8px;background:#223; color:#fff;"></div>
+
+    <p class="emergency">Emergency Numbers: Fire - 101 | Police - 100 | Ambulance - 108</p>
+  </div>
+
+  <script>
+    async function decrementStar(username, btn) {
+      if (!confirm(`Reduce star of user "${username}" by 1?`)) return;
+      btn.disabled = true;
+      const res = await fetch('/decrement-star/' + username, { method: 'POST' });
+      const data = await res.json();
+      btn.disabled = false;
+
+      // Show admin notice with message and removed count if any
+      const notice = document.getElementById('admin-notice');
+      notice.style.display = 'block';
+      notice.textContent = data.message || 'Action completed.';
+
+      if (data.status === 'success') {
+        // Update the star count cell for the user without reloading
+        const starCell = document.querySelector(`.star-count[data-username="${username}"]`);
+        if (starCell && typeof data.new_stars !== 'undefined') {
+          starCell.textContent = data.new_stars;
+        }
+        // Temporarily highlight notice
+        notice.style.background = '#2b4';
+        setTimeout(() => { notice.style.background = '#223'; }, 4000);
+      } else {
+        notice.style.background = '#822';
+      }
+    }
+
+    async function approve(id) {
+      if (!confirm('Approve this report?')) return;
+      const res = await fetch('/admin/approve_report/' + id, { method: 'POST' });
+      const data = await res.json();
+      alert(data.message);
+      if (data.status === 'success') location.reload();
+    }
+
+    async function decline(id) {
+      if (!confirm('Decline this report and block the user?')) return;
+      const res = await fetch('/admin/decline_report/' + id, { method: 'POST' });
+      const data = await res.json();
+      alert(data.message);
+      if (data.status === 'success') location.reload();
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Disaster Alert Dashboard</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+  <link rel="stylesheet" href="/static/css/style.css" />
+  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #1e1e2f;
+      color: #fff;
+    }
+    .container {
+      max-width: 1100px;
+      margin: 20px auto;
+      padding: 20px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 20px;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+    h1 {
+      text-align: center;
+      font-size: 2rem;
+      font-weight: 900;
+      margin-bottom: 10px;
+    }
+    .description {
+      text-align: center;
+      font-size: 1rem;
+      color: #ccc;
+      margin-bottom: 25px;
+    }
+    #map {
+      height: 400px;
+      border-radius: 15px;
+      margin-bottom: 20px;
+    }
+    .user-info {
+      text-align: center;
+      font-size: 1.1rem;
+      margin-bottom: 20px;
+    }
+    .user-info strong { color: #1abc9c; }
+    a.logout-link { color: #ff5555; text-decoration: underline; margin-left: 10px; }
+    form input, form textarea, form button {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 12px;
+      border-radius: 10px;
+      border: none;
+      font-size: 1rem;
+    }
+    form button {
+      background: #28a745;
+      font-weight: bold;
+      color: #fff;
+      cursor: pointer;
+    }
+    form button:hover { background: #218838; }
+    #report-list h2 {
+      text-align: center;
+      margin-top: 30px;
+      margin-bottom: 10px;
+    }
+    .report-entry {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 10px;
+      margin: 8px 0;
+      border-radius: 10px;
+    }
+    .emergency {
+      text-align: center;
+      margin-top: 20px;
+      font-weight: bold;
+      color: #ff5555;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Stay Safe with Real-Time Disaster Alerts</h1>
+    <p class="description">Get instant notifications about emergencies in your area. Prepare, respond, and stay informed during critical situations.</p>
+
+    <div class="user-info">
+      Logged in as: <strong>{{ username }}</strong> | Your star rating: <strong>{{ stars }}</strong> ⭐
+      <a href="{{ url_for('logout') }}" class="logout-link">Logout</a>
+    </div>
+
+    <div id="map"></div>
+
+    <form id="report-form" {% if not can_submit or has_pending_report %}class="disabled"{% endif %}>
+      <h2>Submit a Report</h2>
+      <input type="text" id="type" placeholder="Disaster Type (e.g. Flood)" required {% if not can_submit or has_pending_report %}disabled{% endif %} />
+      <textarea id="description" placeholder="Short description" required {% if not can_submit or has_pending_report %}disabled{% endif %}></textarea>
+      <input type="text" id="latitude" placeholder="Latitude (click on map)" required readonly {% if not can_submit or has_pending_report %}disabled{% endif %} />
+      <input type="text" id="longitude" placeholder="Longitude (click on map)" required readonly {% if not can_submit or has_pending_report %}disabled{% endif %} />
+      <button type="submit" {% if not can_submit or has_pending_report %}disabled{% endif %}>
+        {% if has_pending_report %}
+          First report pending approval
+        {% elif not can_submit %}
+          Reporting Disabled
+        {% else %}
+          Submit Report
+        {% endif %}
+      </button>
+    </form>
+
+    {% if has_pending_report %}
+      <p style="color:#ffd700; text-align:center; margin-top:10px;">Your first report is pending admin approval. You cannot submit another report until it is reviewed.</p>
+    {% endif %}
+
+    <div id="report-list">
+      <h2>Recent Reports</h2>
+      <div id="reports"></div>
+    </div>
+
+    <p class="emergency">Emergency Numbers: Fire - 101 | Police - 100 | Ambulance - 102</p>
+  </div>
+
+  <script type="module" src="/static/js/firebase-notify.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/firebase-messaging-sw.js')
+        .then(reg => console.log('Service Worker registered:', reg.scope))
+        .catch(err => console.error('Service Worker registration failed:', err));
+    }
+  </script>
+
+  <script>
+    const map = L.map('map').setView([10.7905, 78.7047], 6);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    let marker;
+    map.on('click', function (e) {
+      if (document.getElementById('type').disabled) {
+        alert('You cannot select a location because your star rating is zero.');
+        return;
+      }
+      const { lat, lng } = e.latlng;
+      document.getElementById('latitude').value = lat.toFixed(5);
+      document.getElementById('longitude').value = lng.toFixed(5);
+      if (marker) map.removeLayer(marker);
+      marker = L.marker([lat, lng]).addTo(map);
+    });
+
+    async function loadReports() {
+      const res = await fetch('/user-reports');
+      const reports = await res.json();
+      const container = document.getElementById('reports');
+      container.innerHTML = '';
+      reports.forEach(r => {
+        if (!r.lat || !r.lon) return;
+        const lat = parseFloat(r.lat);
+        const lng = parseFloat(r.lon);
+        if (isNaN(lat) || isNaN(lng)) return;
+        const div = document.createElement('div');
+        div.className = 'report-entry';
+        div.innerHTML = `<strong>${r.type}</strong> at [${lat.toFixed(5)}, ${lng.toFixed(5)}]<br>${r.description}<br><small>Reported by: ${r.username || 'Unknown'}</small>`;
+        container.appendChild(div);
+        L.circleMarker([lat, lng], { color: 'red', radius: 8, fillOpacity: 0.6 })
+          .addTo(map)
+          .bindPopup(`<b>${r.type}</b><br>${r.description}<br><small>Reported by: ${r.username || 'Unknown'}</small>`);
+      });
+    }
+
+    async function loadNasaEvents() {
+      try {
+        const res = await fetch('/nasa-data');
+        const data = await res.json();
+        if (!data || !data.events) return;
+        data.events.forEach(event => {
+          const coords = event.geometry?.[0]?.coordinates;
+          if (coords && coords.length === 2) {
+            const [lng, lat] = coords;
+            L.marker([lat, lng], { title: event.title })
+              .addTo(map)
+              .bindPopup(`<b>NASA: ${event.title}</b><br>Status: ${event.closed || 'Ongoing'}`);
+          }
+        });
+      } catch (error) { console.error('Failed to load NASA data:', error); }
+    }
+
+    async function loadEarthquakes() {
+      try {
+        const res = await fetch('/earthquake-data');
+        const data = await res.json();
+        if (!data || !data.features) return;
+        data.features.forEach(quake => {
+          const coords = quake.geometry?.coordinates;
+          if (coords && coords.length >= 2) {
+            const [lng, lat] = coords;
+            const mag = quake.properties.mag;
+            const place = quake.properties.place;
+            L.circle([lat, lng], { color: 'orange', radius: mag * 5000, fillOpacity: 0.3 })
+              .addTo(map)
+              .bindPopup(`<b>USGS Earthquake</b><br>${place}<br>Magnitude: ${mag}`);
+          }
+        });
+      } catch (error) { console.error('Failed to load USGS data:', error); }
+    }
+
+    document.getElementById('report-form').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      if(document.getElementById('type').disabled) {
+        alert('Report submission is disabled because your star rating is zero.');
+        return;
+      }
+      const type = document.getElementById('type').value;
+      const description = document.getElementById('description').value;
+      const latitude = document.getElementById('latitude').value;
+      const longitude = document.getElementById('longitude').value;
+      const report = { type, description, lat: latitude, lon: longitude };
+      const res = await fetch('/submit-report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(report)
+      });
+      if (res.ok) {
+        alert('Report submitted successfully!');
+        document.getElementById('report-form').reset();
+        if (marker) map.removeLayer(marker);
+        loadReports();
+      } else { alert('Failed to submit report.'); }
+    });
+
+    loadReports();
+    loadNasaEvents();
+    loadEarthquakes();
+  </script>
+</body>
+</html>
